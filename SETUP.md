@@ -158,3 +158,13 @@ Official references:
 4. Run python server.py --check in the deployed service environment. Then test email login and one controlled referral purchase with a different buyer email. The API check does not prove email delivery or payment processing.
 
 This source has automated tests, but no access to your private credentials. It is not a live-verified deployment. A SellAuth API key alone is insufficient for website email sign-in: RESEND_API_KEY, a verified EMAIL_FROM and SESSION_SECRET are also required.
+
+## Diagnose SellAuth HTTP 403 errors
+
+This revision reports the upstream HTTP status and safe API error details rather than the previous generic tier-sync failure. It recognizes Cloudflare error 1010 and includes the response's support reference. It never logs the API Authorization header, email codes, request bodies or full API responses.
+
+If Cloudflare explicitly blocks a request as non-retryable (including error 1010), the service pauses automatic SellAuth requests until restart. It does not change client signatures or bypass security controls. Contact SellAuth support with the reference shown in YOUR Railway logs, shop ID 276718, the failed endpoint /v1/shops/276718/affiliate-tiers and the timestamp. Ask them to review authorized server-to-server API access from your Railway deployment. Restart the service and run python server.py --check after SellAuth resolves the access restriction.
+
+A Cloudflare 1010 response was observed in the development environment without using a merchant key. That observation alone does not prove your Railway request receives the same response. The updated logs establish the specific failure from your deployment. A plain HTTP 403 without a Cloudflare error can still indicate API-key permissions, shop access or another restriction.
+
+For this update, replace server.py with the ZIP's server.py and redeploy; the included frontend remains Bronze only. Your existing Railway variables and persistent volume stay in place. This diagnostic update does not itself grant access through SellAuth's firewall or prove the live integration works.

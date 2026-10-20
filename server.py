@@ -26,9 +26,10 @@ TIERS = (("Bronze", 0, 20, 15),)
 CODE = re.compile(r"^[A-Za-z0-9_-]{3,16}$")
 
 class Problem(Exception):
-    def __init__(self, message, status=400):
+    def __init__(self, message, status=400, retryable=True):
         super().__init__(message)
         self.status = status
+        self.retryable = retryable
 
 def unwrap(value):
     return value["data"] if isinstance(value, dict) and isinstance(value.get("data"), dict) else value
@@ -71,6 +72,7 @@ class App:
         self.snapshot = None
         self.last_sync = 0
         self.sync_error = None
+        self.access_block = None
 
     def connect(self):
         return sqlite3.connect(self.db, timeout=15)
@@ -90,16 +92,41 @@ class App:
             with urlopen(req, timeout=25) as response:
                 return json.load(response)
         except HTTPError as error:
+            service = "SellAuth" if urlsplit(url).hostname == "api.sellauth.com" else "Email service"
+            retryable = True
             try:
-                message = json.load(error).get("message", "SellAuth rejected this action.")
+                payload = json.loads(error.read(65536))
+                if not isinstance(payload, dict):
+                    payload = {}
+                if payload.get("cloudflare_error") or payload.get("error_code") == 1010:
+                    code = str(payload.get("error_code", "unknown"))
+                    code = code if re.fullmatch(r"[0-9]{3,6}", code) else "unknown"
+                    ray = str(payload.get("ray_id", ""))
+                    ray = ray if re.fullmatch(r"[A-Za-z0-9-]{1,80}", ray) else "unavailable"
+                    message = f"{service} request blocked by Cloudflare (HTTP {error.code}, error {code}, reference {ray}). Contact {service} support with this reference."
+                    retryable = payload.get("retryable") is not False and code != "1010"
+                else:
+                    detail = payload.get("message") or payload.get("detail") or payload.get("error") or payload.get("title")
+                    message = f"{service} API returned HTTP {error.code}: " + (detail if isinstance(detail, str) else "Request rejected; check API access and shop permissions.")
             except (ValueError, AttributeError):
-                message = "The connected service rejected this action."
-            raise Problem(str(message)[:300], error.code if 400 <= error.code < 500 else 502)
+                message = f"{service} returned HTTP {error.code} with a non-JSON error response."
+            token = headers.get("Authorization", "").removeprefix("Bearer ")
+            if token:
+                message = message.replace(token, "[redacted]")
+            message = " ".join(message.split())[:500]
+            raise Problem(message, error.code if 400 <= error.code < 500 else 502, retryable=retryable) from None
         except (OSError, ValueError):
             raise Problem("The connected service is temporarily unavailable. Please retry.", 502)
 
     def merchant(self, path, method="GET", body=None):
-        return self.transport("https://api.sellauth.com/v1/shops/" + self.shop + path, method, body, {"Authorization": "Bearer " + self.key})
+        if self.access_block:
+            raise self.access_block
+        try:
+            return self.transport("https://api.sellauth.com/v1/shops/" + self.shop + path, method, body, {"Authorization": "Bearer " + self.key})
+        except Problem as error:
+            if not error.retryable:
+                self.access_block = error
+            raise
 
     def customer(self, cid):
         result = unwrap(self.merchant("/customers/" + str(cid)))
@@ -447,8 +474,13 @@ def start_sync_worker(app):
         while True:
             try:
                 app.sync()
-            except Exception:
-                print("SellAuth tier sync failed. Check configuration or API access.", flush=True)
+            except Problem as error:
+                print("SellAuth sync failed: " + str(error), flush=True)
+                if not error.retryable:
+                    print("SellAuth automatic sync paused. Resolve access with SellAuth support, then restart this service.", flush=True)
+                    return
+            except Exception as error:
+                print("SellAuth sync failed with " + type(error).__name__ + ". Run python server.py --check for diagnostics.", flush=True)
             time.sleep(30)
     threading.Thread(target=worker, daemon=True).start()
 
@@ -467,9 +499,12 @@ def main():
     if args.check:
         if not app.ready:
             raise SystemExit("Set all required configuration variables before checking.")
-        app.tiers()
-        rows(app.merchant("/invoices?perPage=1&all=true"))
-        rows(app.merchant("/affiliate-payouts?perPage=1"))
+        try:
+            app.tiers()
+            rows(app.merchant("/invoices?perPage=1&all=true"))
+            rows(app.merchant("/affiliate-payouts?perPage=1"))
+        except Problem as error:
+            raise SystemExit("SellAuth check failed: " + str(error)) from None
         print("SellAuth tier, invoice and payout-list access checked. Email delivery and a live purchase still need testing.")
         return
     validate_production(app)
