@@ -1,4 +1,5 @@
 import copy
+import contextlib
 import importlib.util
 import json
 from pathlib import Path
@@ -44,6 +45,11 @@ class Native:
         if path.endswith("/affiliate-tiers"):
             return {"data": self.tiers}
         if path.endswith("/invoices"):
+            query = parse_qs(urlsplit(url).query)
+            if query.get("all") != ["1"]:
+                raise server.Problem("The all field must be true or false.", 422)
+            if "archived" in query and query["archived"] != ["1"]:
+                raise server.Problem("Invalid archived filter.", 422)
             return {"data": self.invoices, "last_page": 1}
         if path.endswith("/affiliate-payouts"):
             return {"data": self.payouts, "last_page": 1}
@@ -94,6 +100,39 @@ class Tests(unittest.TestCase):
         self.assertEqual(data["discount"], 15)
         self.assertEqual(data["salesCount"], 25)
         self.assertFalse(any(method != "GET" for _,method,_ in self.native.calls))
+
+    def test_invoice_query_flags_are_accepted_for_current_and_archived_orders(self):
+        self.app.invoice_page(page=2, per_page=50)
+        self.app.invoice_page(page=3, archived=True)
+        first, second = [parse_qs(urlsplit(url).query) for url,_,_ in self.native.calls]
+        self.assertEqual(first, {"page":["2"], "perPage":["50"], "all":["1"]})
+        self.assertEqual(second, {"page":["3"], "perPage":["100"], "all":["1"], "archived":["1"]})
+
+    def test_api_check_uses_same_validated_queries_as_sync(self):
+        with patch.object(server, "App", return_value=self.app), patch("sys.argv", ["server.py", "--check"]), contextlib.redirect_stdout(io.StringIO()):
+            server.main()
+        calls = [parse_qs(urlsplit(url).query) for url,_,_ in self.native.calls if urlsplit(url).path.endswith("/invoices")]
+        self.assertEqual(len(calls), 2)
+        self.assertTrue(all(q["all"] == ["1"] and q["perPage"] == ["1"] for q in calls))
+        self.assertNotIn("archived", calls[0])
+        self.assertEqual(calls[1]["archived"], ["1"])
+
+    def test_pagination_covers_both_buckets_and_deduplicates_invoice_ids(self):
+        seen = []
+        def transport(url, method, body, headers):
+            if not urlsplit(url).path.endswith("/invoices"):
+                return self.native(url, method, body, headers)
+            query = parse_qs(urlsplit(url).query)
+            self.assertEqual(query["all"], ["1"])
+            archived = query.get("archived") == ["1"]
+            page = int(query["page"][0])
+            seen.append((archived, page))
+            ids = {(False,1):1, (False,2):2, (True,1):2, (True,2):3}
+            return {"data":[self.invoice(ids[(archived,page)])], "last_page":2}
+        self.app.transport = transport
+        self.app.sync(force=True)
+        self.assertEqual(seen, [(False,1),(False,2),(True,1),(True,2)])
+        self.assertEqual(sorted(x["id"] for x in self.app.snapshot), [1,2,3])
 
     def test_cloudflare_block_reports_reference_and_stops_further_requests(self):
         payload = {"cloudflare_error": True, "error_code": 1010, "ray_id": "test-reference", "retryable": False}

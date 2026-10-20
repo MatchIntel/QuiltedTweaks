@@ -180,3 +180,9 @@ The previous urllib client did not set an application User-Agent, so Python supp
 Extract the ZIP, replace server.py in the website repository and redeploy. Keep all existing Railway variables and the /data volume. A fresh deployment also clears the previous in-memory paused state. Run python server.py --check inside the deployed service once. If it still reports Cloudflare error 1010, give SellAuth support the new response reference and the User-Agent above, and await their confirmation. Avoid repeated retries.
 
 No authenticated SellAuth request was performed during development. The change passes mocked request-header tests and the full backend suite, but resolution of your live access block must be confirmed from Railway after deployment.
+
+## Invoice boolean query fix (HTTP 422)
+
+The invoice endpoint requires a validated boolean for all. The previous URL used the text all=true, which the live API rejected. Invoice requests now encode all=1 and archived=1 for the archived bucket. The background synchronization and python server.py --check both use the same invoice-page method, including current and archived history. Pagination and duplicate-invoice handling remain intact.
+
+Replace server.py from this ZIP in the repository and redeploy with your existing variables and persistent volume. Run python server.py --check in the deployed service. This update has automated coverage for the exact query encoding, both diagnostic requests, multi-page current/archived history, and duplicate IDs. A live authenticated check still needs to be performed on Railway.

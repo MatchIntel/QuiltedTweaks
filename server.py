@@ -223,6 +223,14 @@ class App:
             body = {"name": name, "percentage": rate, "discount_percentage": discount, "is_public": True, "sort_order": index, "attribution_mode": "per_order", "attribution_window_days": 30}
             self.merchant("/affiliate-tiers" + ("/" + str(old["id"]) if old else ""), "PUT" if old else "POST", body)
 
+    def invoice_page(self, page=1, archived=False, per_page=100):
+        # URL query values are strings on arrival. Use the API validator's
+        # accepted boolean representation (1), rather than the text "true".
+        query = {"perPage": per_page, "page": page, "all": 1}
+        if archived:
+            query["archived"] = 1
+        return self.merchant("/invoices?" + urlencode(query))
+
     def sync(self, force=False):
         if not self.key:
             return
@@ -236,10 +244,7 @@ class App:
             for archived in (False, True):
                 page = 1
                 while True:
-                    query = {"perPage": 100, "page": page, "all": "true"}
-                    if archived:
-                        query["archived"] = "true"
-                    result = self.merchant("/invoices?" + urlencode(query))
+                    result = self.invoice_page(page, archived)
                     for invoice in rows(result):
                         invoice_map[int(invoice["id"])] = invoice
                     last = int(result.get("last_page", result.get("meta", {}).get("last_page", 0)))
@@ -502,7 +507,8 @@ def main():
             raise SystemExit("Set all required configuration variables before checking.")
         try:
             app.tiers()
-            rows(app.merchant("/invoices?perPage=1&all=true"))
+            for archived in (False, True):
+                rows(app.invoice_page(archived=archived, per_page=1))
             rows(app.merchant("/affiliate-payouts?perPage=1"))
         except Problem as error:
             raise SystemExit("SellAuth check failed: " + str(error)) from None
