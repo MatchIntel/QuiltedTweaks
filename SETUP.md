@@ -163,8 +163,20 @@ This source has automated tests, but no access to your private credentials. It i
 
 This revision reports the upstream HTTP status and safe API error details rather than the previous generic tier-sync failure. It recognizes Cloudflare error 1010 and includes the response's support reference. It never logs the API Authorization header, email codes, request bodies or full API responses.
 
-If Cloudflare explicitly blocks a request as non-retryable (including error 1010), the service pauses automatic SellAuth requests until restart. It does not change client signatures or bypass security controls. Contact SellAuth support with the reference shown in YOUR Railway logs, shop ID 276718, the failed endpoint /v1/shops/276718/affiliate-tiers and the timestamp. Ask them to review authorized server-to-server API access from your Railway deployment. Restart the service and run python server.py --check after SellAuth resolves the access restriction.
+If Cloudflare explicitly blocks a request as non-retryable (including error 1010), the service pauses automatic SellAuth requests until restart. Requests use a fixed, explicit Quilted Tweaks User-Agent identifying this integration. Contact SellAuth support with the reference shown in YOUR Railway logs, shop ID 276718, the failed endpoint /v1/shops/276718/affiliate-tiers and the timestamp. Ask them to review authorized server-to-server API access from your Railway deployment. Restart the service and run python server.py --check after SellAuth resolves the access restriction.
 
 A Cloudflare 1010 response was observed in the development environment without using a merchant key. That observation alone does not prove your Railway request receives the same response. The updated logs establish the specific failure from your deployment. A plain HTTP 403 without a Cloudflare error can still indicate API-key permissions, shop access or another restriction.
 
 For this update, replace server.py with the ZIP's server.py and redeploy; the included frontend remains Bronze only. Your existing Railway variables and persistent volume stay in place. This diagnostic update does not itself grant access through SellAuth's firewall or prove the live integration works.
+
+## User-Agent update following SellAuth support guidance
+
+This release explicitly sends this header on HTTP requests:
+
+    User-Agent: QuiltedTweaks-Website/1.1 (+https://quiltedtweaks.com)
+
+The previous urllib client did not set an application User-Agent, so Python supplied its default Python-urllib identity. SellAuth support advised using a normal User-Agent while their team reviews Cloudflare reference a4d4e8503a9f8775. This update gives the authorized server integration a stable, accurate application identity. Requests still use https://api.sellauth.com/v1/ and Authorization: Bearer followed by the merchant key from Railway.
+
+Extract the ZIP, replace server.py in the website repository and redeploy. Keep all existing Railway variables and the /data volume. A fresh deployment also clears the previous in-memory paused state. Run python server.py --check inside the deployed service once. If it still reports Cloudflare error 1010, give SellAuth support the new response reference and the User-Agent above, and await their confirmation. Avoid repeated retries.
+
+No authenticated SellAuth request was performed during development. The change passes mocked request-header tests and the full backend suite, but resolution of your live access block must be confirmed from Railway after deployment.

@@ -22,6 +22,7 @@ from urllib.parse import urlencode, urlsplit
 from urllib.request import Request, urlopen
 
 ROOT = Path(__file__).resolve().parent
+API_USER_AGENT = "QuiltedTweaks-Website/1.1 (+https://quiltedtweaks.com)"
 TIERS = (("Bronze", 0, 20, 15),)
 CODE = re.compile(r"^[A-Za-z0-9_-]{3,16}$")
 
@@ -87,7 +88,7 @@ class App:
     @staticmethod
     def http_json(url, method, body, headers):
         raw = None if body is None else json.dumps(body).encode()
-        req = Request(url, data=raw, method=method, headers={"Content-Type": "application/json", "Accept": "application/json", **headers})
+        req = Request(url, data=raw, method=method, headers={"Content-Type": "application/json", "Accept": "application/json", "User-Agent": API_USER_AGENT, **headers})
         try:
             with urlopen(req, timeout=25) as response:
                 return json.load(response)

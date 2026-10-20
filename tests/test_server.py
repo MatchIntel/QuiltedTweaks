@@ -7,6 +7,7 @@ import tempfile
 import time
 import io
 import unittest
+from unittest.mock import patch
 import threading
 from urllib.request import Request, urlopen
 from urllib.error import HTTPError
@@ -93,6 +94,51 @@ class Tests(unittest.TestCase):
         self.assertEqual(data["discount"], 15)
         self.assertEqual(data["salesCount"], 25)
         self.assertFalse(any(method != "GET" for _,method,_ in self.native.calls))
+
+    def test_cloudflare_block_reports_reference_and_stops_further_requests(self):
+        payload = {"cloudflare_error": True, "error_code": 1010, "ray_id": "test-reference", "retryable": False}
+        failure = HTTPError("https://api.sellauth.com/v1/shops/276718/affiliate-tiers", 403, "Forbidden", {}, io.BytesIO(json.dumps(payload).encode()))
+        app = server.App(self.env)
+        with patch.object(server, "urlopen", side_effect=failure) as request:
+            for _ in range(2):
+                with self.assertRaises(server.Problem) as error:
+                    app.sync(force=True)
+                self.assertIn("Cloudflare", str(error.exception))
+                self.assertIn("1010", str(error.exception))
+                self.assertIn("test-reference", str(error.exception))
+                self.assertFalse(error.exception.retryable)
+                self.assertNotIn(self.env["SELLAUTH_API_KEY"], str(error.exception))
+            self.assertEqual(request.call_count, 1)
+
+    def test_merchant_request_identifies_qt_and_preserves_api_auth(self):
+        app = server.App(self.env)
+        response = io.BytesIO(b'{"data": []}')
+        with patch.object(server, "urlopen", return_value=response) as request:
+            self.assertEqual(app.merchant("/affiliate-tiers"), {"data": []})
+        req = request.call_args.args[0]
+        self.assertEqual(req.full_url, "https://api.sellauth.com/v1/shops/276718/affiliate-tiers")
+        self.assertEqual(req.get_header("User-agent"), server.API_USER_AGENT)
+        self.assertEqual(req.get_header("Authorization"), "Bearer " + self.env["SELLAUTH_API_KEY"])
+        self.assertEqual(req.get_header("Accept"), "application/json")
+        self.assertEqual(req.get_method(), "GET")
+
+    def test_api_detail_is_reported_without_exposing_credentials(self):
+        key = self.env["SELLAUTH_API_KEY"]
+        payload = {"detail": "Permission denied " + key}
+        failure = HTTPError("https://api.sellauth.com/v1/shops/276718/affiliate-tiers", 403, "Forbidden", {}, io.BytesIO(json.dumps(payload).encode()))
+        with patch.object(server, "urlopen", side_effect=failure):
+            with self.assertRaises(server.Problem) as error:
+                server.App.http_json(failure.url, "GET", None, {"Authorization": "Bearer " + key})
+            self.assertIn("HTTP 403", str(error.exception))
+            self.assertIn("Permission denied", str(error.exception))
+            self.assertNotIn(key, str(error.exception))
+
+    def test_non_json_upstream_error_is_identified(self):
+        failure = HTTPError("https://api.sellauth.com/v1/shops", 403, "Forbidden", {}, io.BytesIO(b"<html>Denied</html>"))
+        with patch.object(server, "urlopen", side_effect=failure):
+            with self.assertRaises(server.Problem) as error:
+                server.App.http_json(failure.url, "GET", None, {})
+            self.assertIn("non-JSON", str(error.exception))
 
     def test_setup_reuses_default_tier_and_is_idempotent_on_one_tier_plan(self):
         self.native.tiers[0]["name"] = "Default"
