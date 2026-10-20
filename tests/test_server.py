@@ -10,11 +10,13 @@ import io
 import unittest
 from unittest.mock import patch
 import threading
+import sys
 from urllib.request import Request, urlopen
 from urllib.error import HTTPError
 from urllib.parse import urlsplit, parse_qs
 
 spec = importlib.util.spec_from_file_location("qt_server", Path(__file__).resolve().parents[1] / "server.py")
+sys.path.insert(0, str(Path(spec.origin).parent))
 server = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(server)
 
@@ -243,6 +245,40 @@ class Tests(unittest.TestCase):
             self.app.session(token+"tampered")
         self.assertEqual(server.App(self.env,self.native).session(token)["id"],7)
 
+    def test_login_email_contains_matching_branded_html_and_plain_text_codes(self):
+        self.app.send_code("partner@example.com", "email-style-test")
+        payload = self.native.sent[-1]
+        code = re.search(r"\b[0-9]{6}\b", payload["text"])[0]
+        self.assertIn(code, payload["html"])
+        self.assertIn("#091710", payload["html"])
+        self.assertIn("10 minutes", payload["html"])
+        self.assertIn("Quilted Tweaks", payload["html"])
+        self.assertNotIn("{{CODE}}", payload["html"])
+        self.assertNotIn("<script", payload["html"])
+
+    def test_banner_uses_native_code_and_tier_not_client_input(self):
+        with patch.object(server, "affiliate_gif", return_value=b"GIF89a-fixture") as render:
+            self.assertEqual(self.app.banner(self.session), b"GIF89a-fixture")
+        render.assert_called_once_with("PARTNER", 15)
+        self.native.c["affiliate_status"] = "suspended"
+        with self.assertRaises(server.Problem) as error:
+            self.app.banner(self.session)
+        self.assertEqual(error.exception.status, 403)
+
+    def test_generated_banner_is_a_real_looping_animated_gif(self):
+        from visuals import affiliate_gif
+        from PIL import Image
+        data = affiliate_gif("PARTNER", 15)
+        self.assertTrue(data.startswith(b"GIF89a"))
+        image = Image.open(io.BytesIO(data))
+        self.assertEqual(image.size, (936,120))
+        self.assertEqual(image.n_frames, 60)
+        self.assertEqual(image.info["loop"], 0)
+        first = image.convert("RGB").tobytes()
+        image.seek(30)
+        self.assertNotEqual(first, image.convert("RGB").tobytes())
+        self.assertEqual(image.info["duration"], 50)
+
     def test_five_bad_codes_lock_an_otp(self):
         self.app.send_code("partner@example.com","test-ip")
         code=re.search(r"\b[0-9]{6}\b",self.native.sent[-1]["text"])[0]
@@ -300,10 +336,10 @@ class Tests(unittest.TestCase):
             with self.assertRaises(HTTPError) as error:
                 urlopen(req)
             self.assertEqual(error.exception.code,403)
-            for path in ["/server.py","/.env","/data/affiliates.sqlite3","/api/affiliates/dashboard"]:
+            for path in ["/server.py","/.env","/data/affiliates.sqlite3","/api/affiliates/dashboard","/api/affiliates/banner.gif"]:
                 with self.assertRaises(HTTPError) as error:
                     urlopen(base+path)
-                self.assertEqual(error.exception.code,401 if path.endswith("/dashboard") else 404)
+                self.assertEqual(error.exception.code,401 if path.startswith("/api/") else 404)
         finally:
             http.shutdown();http.server_close();worker.join()
 
@@ -320,6 +356,19 @@ class Tests(unittest.TestCase):
         self.assertTrue(captured["status"].startswith("401"))
         wsgi({"REQUEST_METHOD":"GET","PATH_INFO":"/health","wsgi.input":io.BytesIO()},start)
         self.assertTrue(captured["status"].startswith("200"))
+
+    def test_authenticated_wsgi_banner_returns_gif_with_private_cache_headers(self):
+        token = self.login()
+        captured = {}
+        def start(status, headers):
+            captured["status"] = status
+            captured["headers"] = dict(headers)
+        with patch.object(server, "affiliate_gif", return_value=b"GIF89a-test"):
+            raw = b"".join(server.wsgi_for(self.app)({"REQUEST_METHOD":"GET", "PATH_INFO":"/api/affiliates/banner.gif", "HTTP_COOKIE":"qt_session="+token, "wsgi.input":io.BytesIO()}, start))
+        self.assertTrue(captured["status"].startswith("200"))
+        self.assertEqual(captured["headers"]["Content-Type"], "image/gif")
+        self.assertEqual(captured["headers"]["Cache-Control"], "no-store")
+        self.assertEqual(raw, b"GIF89a-test")
 
 if __name__=="__main__":
     unittest.main()

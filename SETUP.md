@@ -186,3 +186,17 @@ No authenticated SellAuth request was performed during development. The change p
 The invoice endpoint requires a validated boolean for all. The previous URL used the text all=true, which the live API rejected. Invoice requests now encode all=1 and archived=1 for the archived bucket. The background synchronization and python server.py --check both use the same invoice-page method, including current and archived history. Pagination and duplicate-invoice handling remain intact.
 
 Replace server.py from this ZIP in the repository and redeploy with your existing variables and persistent volume. Run python server.py --check in the deployed service. This update has automated coverage for the exact query encoding, both diagnostic requests, multi-page current/archived history, and duplicate IDs. A live authenticated check still needs to be performed on Railway.
+
+## Animated banners, branded emails and dashboard motion
+
+Deploy the complete contents of this ZIP for this release. In addition to index.html and server.py, it requires visuals.py, the assets directory, the updated requirements.txt and Dockerfile. Replacing server.py alone will not install the renderer or its assets. Existing Railway variables, domain verification and /data remain valid.
+
+The Banner Generator now downloads a real GIF89a animation: 936 x 120, 60 frames, 50 ms per frame, three-second continuous loop. The supplied file was actually a single PNG frame with a GIF extension; its background is preserved as assets/banner-background.png and animated with ambient particles, glow and a soft sweep. The output uses the signed-in affiliate's current native SellAuth referral code and buyer discount (15% for Bronze). It cannot accept a client-supplied code or discount override.
+
+The authenticated /api/affiliates/banner.gif endpoint checks the session, native customer status and tier. It rate-limits generation requests to six per account per minute, serializes encoding, and keeps at most twelve generated banners in memory. The browser reuses its GIF Blob for preview/download until the account code changes; the output remains GIF rather than PNG. These banners display a referral code; share the associated referral link with the banner to carry attribution into checkout.
+
+Sign-in emails now include an inline-styled dark green/mint HTML layout plus the original plain-text fallback. Both versions carry the same six-digit code and ten-minute expiry. The design has no remote image dependency. Actual rendering can vary by email client; send yourself a fresh sign-in code after deployment to check delivery and appearance.
+
+Dashboard polish includes a sliding tab indicator, short panel/form transitions, button press feedback, hover effects, loading states, and focus rings. CSS motion respects prefers-reduced-motion. Animated GIF playback is part of the explicitly opened Banner Generator preview.
+
+Validation includes referral propagation tests, authenticated GIF access and headers, matching HTML/plain-text email codes, GIF format/frame count/dimensions/loop metadata and frame changes, plus browser preview, GIF download and settings navigation checks against isolated synthetic account data. No live customer, email or order was changed during development.

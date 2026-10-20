@@ -218,7 +218,33 @@ summary{cursor:pointer;font-weight:500;padding:20px 0;font-size:18px}
 .qt .aff-record .aff-text{font-size:12px;padding:5px}
 .qt .aff-fine{font-size:11px;color:#678674;margin-top:22px}
 .qt .aff-payout-form{max-width:530px}.qt .aff-subheading{margin-top:32px!important}
-.qt #aff-banner{width:100%;height:auto;max-width:850px;border:1px solid #2e4d3a;border-radius:14px;display:block;margin:22px 0}
+.qt .aff-banner-shell{margin:26px 0;background:#020805;border:1px solid #2e4d3a;border-radius:16px;padding:18px;min-height:160px;display:grid;align-items:center;overflow:hidden}
+.qt #aff-banner{width:100%;height:auto;display:block;border-radius:9px}
+.qt #aff-banner-status{text-align:center;color:#91bda5;font-size:13px;padding:30px}
+.qt .aff-banner-shell[aria-busy=true]{background:linear-gradient(110deg,#06120c,#143726,#06120c);background-size:200% 100%;animation:aff-loading 1.8s ease-in-out infinite}
+.qt .aff-tabs{position:relative}
+.qt .aff-tabs button[aria-selected=true]{border-bottom-color:transparent}
+.qt .aff-tab-indicator{position:absolute;left:0;bottom:0;height:2px;background:#58e2ad;box-shadow:0 0 14px #4ae8a677;transition:transform .32s cubic-bezier(.2,.8,.2,1),width .32s cubic-bezier(.2,.8,.2,1);pointer-events:none}
+.qt .aff-page button{position:relative;overflow:hidden;isolation:isolate;transition:background .2s,border-color .2s,color .2s,box-shadow .2s,transform .2s,opacity .2s}
+.qt .aff-page button:not(:disabled):hover{transform:translateY(-2px)}
+.qt .aff-page button:not(:disabled):active{transform:translateY(0) scale(.97)}
+.qt .aff-page button:focus-visible,.qt .aff-page a:focus-visible{outline:2px solid #8bf0bd;outline-offset:4px}
+.qt .aff-secondary:not(:disabled):hover{background:#183c2b;border-color:#488e64;box-shadow:0 5px 22px #071c0e55}
+.qt .aff-primary:not(:disabled):hover{box-shadow:0 5px 25px #2bd38b25}
+.qt .aff-logout:not(:disabled):hover{background:#4c252b;border-color:#9b4654}
+.qt .aff-page [aria-busy=true].aff-primary::after{content:"";width:12px;height:12px;flex-shrink:0;border:2px solid #06351a40;border-top-color:#06351a;border-radius:50%;animation:aff-spin .7s linear infinite}
+.qt .aff-ripple{position:absolute;width:12px;height:12px;background:#b6ffe438;border-radius:50%;pointer-events:none;z-index:-1;animation:aff-ripple .55s ease-out forwards}
+.qt .aff-box,.qt .aff-stat,.qt .aff-tool{transition:border-color .25s,box-shadow .25s,transform .25s}
+.qt .aff-stat:hover,.qt .aff-tool:hover{border-color:#3f7956;box-shadow:0 10px 30px #02100855;transform:translateY(-2px)}
+.qt .aff-view:not([hidden])>.aff-box,.qt .aff-view:not([hidden])>.aff-stats,.qt .aff-view:not([hidden])>.aff-columns{animation:aff-reveal .36s both cubic-bezier(.2,.8,.2,1)}
+.qt .aff-view:not([hidden])>:nth-child(2){animation-delay:35ms}.qt .aff-view:not([hidden])>:nth-child(3){animation-delay:65ms}.qt .aff-view:not([hidden])>:nth-child(4){animation-delay:95ms}
+.qt .aff-page form:not([hidden]){animation:aff-reveal .28s ease-out}
+.qt .aff-page input,.qt .aff-page textarea{transition:border-color .2s,box-shadow .2s,background .2s}
+.qt .aff-record{animation:aff-reveal .26s both ease-out}.qt .aff-record:nth-child(2){animation-delay:30ms}.qt .aff-record:nth-child(3){animation-delay:60ms}
+@keyframes aff-ripple{to{transform:translate(-50%,-50%) scale(35);opacity:0}}
+@keyframes aff-spin{to{transform:rotate(360deg)}}
+@keyframes aff-loading{to{background-position:200% 0}}
+@media(prefers-reduced-motion:reduce){.qt .aff-page *,.qt .aff-page *::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}.qt .aff-page button:not(:disabled):hover,.qt .aff-stat:hover,.qt .aff-tool:hover{transform:none}}
 .qt #aff-share-text{max-width:800px;margin-bottom:20px}
 .qt #aff-settings-form{max-width:500px}
 .qt .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
@@ -376,7 +402,7 @@ summary{cursor:pointer;font-weight:500;padding:20px 0;font-size:18px}
     </section>
     <section class="aff-view aff-box" role="tabpanel" id="aff-view-sales" aria-labelledby="aff-tab-sales" hidden><h2>Referred sales</h2><p class="mut">Verified paid orders attributed to your affiliate account.</p><div id="aff-all-sales" class="aff-records"></div></section>
     <section class="aff-view aff-box" role="tabpanel" id="aff-view-cashouts" aria-labelledby="aff-tab-cashouts" hidden><h2>Cashouts</h2><p class="mut">Available affiliate balance: <strong data-aff-money="balance">—</strong>. Requests are reviewed and paid by Quilted Tweaks.</p><form id="aff-payout-form" class="aff-payout-form"><label for="aff-amount">Amount in USD</label><input id="aff-amount" type="number" min=".01" step=".01" placeholder="0.00" required><label for="aff-payout-details">Payout details</label><textarea id="aff-payout-details" maxlength="2000" rows="3" placeholder="Your payout method and recipient details" required></textarea><button type="submit" class="aff-primary">Request payout</button></form><h3 class="aff-subheading">Payout history</h3><div id="aff-all-cashouts" class="aff-records"></div></section>
-    <section class="aff-view aff-box" role="tabpanel" id="aff-view-banner" aria-labelledby="aff-tab-banner" hidden><h2>Your Quilted banner</h2><p class="mut">Download a banner with your referral code and audience discount.</p><canvas id="aff-banner" width="1200" height="630" aria-label="Personalized Quilted Tweaks referral banner"></canvas><button class="aff-primary" type="button" id="aff-download-banner">Download banner PNG</button></section>
+    <section class="aff-view aff-box" role="tabpanel" id="aff-view-banner" aria-labelledby="aff-tab-banner" hidden><h2>Your Quilted banner</h2><p class="mut">Your own animated Quilted banner, with 15% off and your referral code.</p><div id="aff-banner-shell" class="aff-banner-shell"><img id="aff-banner" width="936" height="120" alt="Animated Quilted Tweaks banner with your discount and referral code" hidden><p id="aff-banner-status" role="status">Open this page to generate your animated banner.</p></div><button class="aff-primary" type="button" id="aff-download-banner">Download animated GIF</button></section>
     <section class="aff-view aff-box" role="tabpanel" id="aff-view-social" aria-labelledby="aff-tab-social" hidden><h2>Share Quilted</h2><p class="mut">Your share link opens Quilted Tweaks with your referral attached.</p><label for="aff-share-text">Suggested post</label><textarea rows="5" id="aff-share-text" readonly></textarea><div class="aff-inline"><button class="aff-primary" type="button" id="aff-copy-post">Copy post</button><button class="aff-secondary" type="button" id="aff-share-native">Share link</button></div></section>
     <section class="aff-view aff-box" role="tabpanel" id="aff-view-settings" aria-labelledby="aff-tab-settings" hidden><h2>Affiliate settings</h2><p class="mut">Signed in as <span id="aff-account-email">—</span>.</p><form id="aff-settings-form"><label for="aff-new-code">Custom referral code</label><input id="aff-new-code" maxlength="16" pattern="[A-Za-z0-9_-]{3,16}" required><p class="mut">Changing your code changes your referral link. Replace any older links you have shared.</p><button class="aff-primary" type="submit">Save referral code</button></form></section>
   </div>
@@ -534,8 +560,12 @@ summary{cursor:pointer;font-weight:500;padding:20px 0;font-size:18px}
   let email = '';
   let initialized = false;
   let busy = false;
+  let bannerUrl = null;
+  let bannerKey = '';
+  let bannerFlight = null;
+  const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)');
   const dollars = value => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(Number(value || 0));
-  function say(text, error = false) { message.textContent = text; message.classList.toggle('error', error); message.hidden = false; }
+  function say(text, error = false) { message.textContent = text; message.classList.toggle('error', error); message.hidden = false; if (!reduceMotion.matches) message.animate([{opacity:0,transform:'translateY(-5px)'},{opacity:1,transform:'translateY(0)'}], {duration:220,easing:'ease-out'}); }
   async function api(path, body) {
     const response = await fetch('/api/affiliates/' + path, { method: body === undefined ? 'GET' : 'POST', headers: body === undefined ? {} : { 'Content-Type': 'application/json' }, body: body === undefined ? undefined : JSON.stringify(body), credentials: 'same-origin', cache: 'no-store' });
     let data;
@@ -588,17 +618,38 @@ summary{cursor:pointer;font-weight:500;padding:20px 0;font-size:18px}
       parent.appendChild(row);
     });
   }
-  function drawBanner() {
-    const canvas = $('aff-banner'); const ctx = canvas.getContext('2d');
-    const gradient = ctx.createLinearGradient(0, 0, 1200, 630); gradient.addColorStop(0, '#103e30'); gradient.addColorStop(.6, '#06130f'); gradient.addColorStop(1, '#0b302e');
-    ctx.fillStyle = gradient; ctx.fillRect(0, 0, 1200, 630);
-    ctx.strokeStyle = '#2d7058'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(1040, 95, 280, 0, Math.PI * 2); ctx.stroke();
-    ctx.fillStyle = '#42dda4'; ctx.font = 'bold 54px sans-serif'; ctx.fillText('QT', 75, 105);
-    ctx.fillStyle = '#c5e2d3'; ctx.font = '26px sans-serif'; ctx.fillText('QUILTED TWEAKS', 170, 99);
-    ctx.fillStyle = '#eefbf4'; ctx.font = 'bold 70px sans-serif'; ctx.fillText('Your setup. Optimized.', 75, 245);
-    ctx.fillStyle = '#61e3b1'; ctx.font = 'bold 76px sans-serif'; ctx.fillText((account?.discount || 15) + '% OFF', 75, 352);
-    ctx.fillStyle = '#bad9c9'; ctx.font = '29px sans-serif'; ctx.fillText('with code ' + (account?.code || 'YOUR CODE'), 75, 412);
-    ctx.fillStyle = '#88bba3'; ctx.font = '25px sans-serif'; ctx.fillText(link() || 'quiltedtweaks.com', 75, 541, 1040);
+  function resetBanner() {
+    const key = account?.code ? account.code + ':' + account.discount : '';
+    if (key === bannerKey) return;
+    if (bannerUrl) URL.revokeObjectURL(bannerUrl);
+    bannerUrl = null; bannerKey = key; bannerFlight = null;
+    $('aff-banner').removeAttribute('src'); $('aff-banner').hidden = true;
+    $('aff-banner-status').hidden = false;
+    $('aff-banner-status').textContent = account?.code ? 'Open this page to generate your animated banner.' : 'Create your referral code first.';
+  }
+  async function ensureBanner() {
+    if (!account?.code) throw new Error('Create your referral code first.');
+    if (bannerUrl) return bannerUrl;
+    if (bannerFlight) return bannerFlight;
+    const key = bannerKey;
+    $('aff-banner-status').hidden = false;
+    $('aff-banner-status').textContent = 'Creating your animated banner…';
+    $('aff-banner-shell').setAttribute('aria-busy', 'true');
+    const pending = (async () => {
+      const response = await fetch('/api/affiliates/banner.gif', { credentials: 'same-origin', cache: 'no-store' });
+      if (!response.ok) { let data = {}; try { data = await response.json(); } catch (_) {} throw new Error(data.message || 'Your banner could not be generated. Please retry.'); }
+      if (!(response.headers.get('Content-Type') || '').startsWith('image/gif')) throw new Error('The server returned an invalid banner. Please retry.');
+      const blob = await response.blob();
+      if (key !== bannerKey) throw new Error('Your referral code changed. Generate your banner again.');
+      bannerUrl = URL.createObjectURL(blob);
+      $('aff-banner').src = bannerUrl; $('aff-banner').hidden = false;
+      $('aff-banner-status').hidden = true;
+      return bannerUrl;
+    })();
+    bannerFlight = pending;
+    try { return await pending; }
+    catch (error) { $('aff-banner-status').textContent = error.message; throw error; }
+    finally { if (bannerFlight === pending) bannerFlight = null; $('aff-banner-shell').removeAttribute('aria-busy'); }
   }
   function render(data) {
     account = data;
@@ -616,17 +667,24 @@ summary{cursor:pointer;font-weight:500;padding:20px 0;font-size:18px}
     $('aff-synced').textContent = new Date(data.syncedAt * 1000).toLocaleString();
     salesList('aff-recent-sales', data.sales, 4); salesList('aff-all-sales', data.sales, Infinity);
     payoutList('aff-recent-cashouts', data.payouts, 4, false); payoutList('aff-all-cashouts', data.payouts, Infinity, true);
-    drawBanner();
+    resetBanner();
+    if (!$('aff-view-banner').hidden && account?.code) ensureBanner().catch(error => say(error.message, true));
     if (data.syncWarning) say('Sales synchronization is delayed. Your last confirmed data is shown.', true);
   }
   async function refresh() { render(await api('dashboard')); }
   function signedOut() {
-    account = null; $('aff-login').hidden = false; $('aff-program').hidden = false; $('aff-dashboard').hidden = true; $('aff-logout').hidden = true; $('aff-refresh').hidden = true; $('aff-user').textContent = 'Quilted Tweaks';
+    account = null; resetBanner(); $('aff-login').hidden = false; $('aff-program').hidden = false; $('aff-dashboard').hidden = true; $('aff-logout').hidden = true; $('aff-refresh').hidden = true; $('aff-user').textContent = 'Quilted Tweaks';
   }
   const tabs = [...document.querySelectorAll('[data-aff-tab]')];
   function select(tab) {
     tabs.forEach(item => { const active = item === tab; item.setAttribute('aria-selected', String(active)); item.tabIndex = active ? 0 : -1; $(item.getAttribute('aria-controls')).hidden = !active; });
+    positionIndicator();
+    if (tab.dataset.affTab === 'banner' && account?.code) ensureBanner().catch(error => say(error.message, true));
   }
+  const tabRail = tabs[0].parentElement;
+  const indicator = document.createElement('span'); indicator.className = 'aff-tab-indicator'; indicator.setAttribute('aria-hidden', 'true'); tabRail.appendChild(indicator);
+  function positionIndicator() { const active = tabs.find(tab => tab.getAttribute('aria-selected') === 'true'); if (!active) return; const bounds = active.getBoundingClientRect(); const rail = tabRail.getBoundingClientRect(); indicator.style.width = bounds.width + 'px'; indicator.style.transform = 'translateX(' + (bounds.left - rail.left + tabRail.scrollLeft) + 'px)'; }
+  new ResizeObserver(positionIndicator).observe(tabRail);
   tabs.forEach((tab, index) => {
     tab.addEventListener('click', () => select(tab));
     tab.addEventListener('keydown', event => {
@@ -639,7 +697,7 @@ summary{cursor:pointer;font-weight:500;padding:20px 0;font-size:18px}
   $('aff-other-email').addEventListener('click', () => { $('aff-email-form').hidden = false; $('aff-code-form').hidden = true; $('aff-email').focus(); });
   $('aff-refresh').addEventListener('click', event => action(event.currentTarget, refresh));
   $('aff-logout').addEventListener('click', event => action(event.currentTarget, async () => { try { await api('logout', {}); } catch (error) { if (error.status !== 401) throw error; } signedOut(); say('You have signed out.'); }));
-  $('aff-direct').addEventListener('change', () => { updateLink(); drawBanner(); });
+  $('aff-direct').addEventListener('change', updateLink);
   async function copy(value) {
     try { await navigator.clipboard.writeText(value); say('Copied to clipboard.'); }
     catch (_) { say('Clipboard access was blocked. Select and copy the displayed text.', true); }
@@ -647,23 +705,21 @@ summary{cursor:pointer;font-weight:500;padding:20px 0;font-size:18px}
   document.querySelectorAll('[data-aff-copy]').forEach(button => button.addEventListener('click', () => { if (account?.code) copy(button.dataset.affCopy === 'link' ? link() : account.code); }));
   ['aff-enroll-form', 'aff-settings-form'].forEach(id => $(id).addEventListener('submit', event => { event.preventDefault(); action(event.submitter, async () => { const code = $(id === 'aff-enroll-form' ? 'aff-enroll-code' : 'aff-new-code').value.trim(); const result = await api('code', { code }); await refresh(); say(result.message); }); }));
   $('aff-payout-form').addEventListener('submit', event => { event.preventDefault(); action(event.submitter, async () => { const result = await api('payout', { amount: $('aff-amount').value, details: $('aff-payout-details').value.trim() }); $('aff-payout-form').reset(); await refresh(); say(result.message); }); });
-  $('aff-download-banner').addEventListener('click', () => {
-    if (!account?.code) return;
-    try {
-      $('aff-banner').toBlob(blob => {
-        if (!blob) return say('The banner could not be generated. Please retry.', true);
-        const url = URL.createObjectURL(blob);
-        const anchor = document.createElement('a');
-        anchor.download = 'Quilted-Tweaks-' + account.code + '.png';
-        anchor.href = url;
-        document.body.appendChild(anchor);
-        anchor.click();
-        anchor.remove();
-        setTimeout(() => URL.revokeObjectURL(url), 30000);
-        say('Your banner is ready. Check your browser downloads.');
-      }, 'image/png');
-    } catch (_) { say('The banner could not be downloaded in this browser.', true); }
-  });
+  $('aff-download-banner').addEventListener('click', event => action(event.currentTarget, async () => {
+    const code = account?.code;
+    const url = await ensureBanner();
+    if (!code || code !== account?.code) throw new Error('Your referral code changed. Please download again.');
+    const anchor = document.createElement('a');
+    anchor.download = 'Quilted-Tweaks-' + code + '.gif'; anchor.href = url;
+    document.body.appendChild(anchor); anchor.click(); anchor.remove();
+    say('Your animated GIF is ready. Check your browser downloads.');
+  }));
+  document.querySelectorAll('.aff-page button').forEach(button => button.addEventListener('pointerdown', event => {
+    if (reduceMotion.matches || button.disabled) return;
+    const bounds = button.getBoundingClientRect(); const ripple = document.createElement('span');
+    ripple.className = 'aff-ripple'; ripple.style.left = (event.clientX - bounds.left) + 'px'; ripple.style.top = (event.clientY - bounds.top) + 'px';
+    button.appendChild(ripple); ripple.addEventListener('animationend', () => ripple.remove(), { once: true });
+  }));
   $('aff-copy-post').addEventListener('click', () => { if (account?.code) copy(shareText()); });
   $('aff-share-native').addEventListener('click', async () => { if (!account?.code) return; if (navigator.share) { try { await navigator.share({ title: 'Quilted Tweaks', text: shareText(), url: link() }); } catch (_) {} } else copy(link()); });
   async function init() {

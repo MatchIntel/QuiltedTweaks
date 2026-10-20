@@ -20,6 +20,7 @@ from email.message import Message
 from urllib.error import HTTPError
 from urllib.parse import urlencode, urlsplit
 from urllib.request import Request, urlopen
+from visuals import affiliate_gif, sign_in_html
 
 ROOT = Path(__file__).resolve().parent
 API_USER_AGENT = "QuiltedTweaks-Website/1.1 (+https://quiltedtweaks.com)"
@@ -161,7 +162,8 @@ class App:
         try:
             self.transport("https://api.resend.com/emails", "POST", {
                 "from": self.sender, "to": [email], "subject": "Your Quilted Tweaks sign-in code",
-                "text": "Your QT affiliate sign-in code is " + code + ". It expires in 10 minutes. If you did not request this, ignore this email."
+                "text": "Your QT affiliate sign-in code is " + code + ". It expires in 10 minutes. If you did not request this, ignore this email.",
+                "html": sign_in_html(code)
             }, {"Authorization": "Bearer " + self.resend})
         except Exception:
             with self.connect() as db:
@@ -304,6 +306,19 @@ class App:
             with contextlib.suppress(Exception):
                 self.transport("https://api.sellauth.com/v1/customer-dashboard/logout", "POST", {}, headers)
 
+    def banner(self, session):
+        self.limit("banner:" + str(session["id"]), 6, 60)
+        customer = self.customer(session["id"])
+        if customer.get("affiliate_status") == "suspended":
+            raise Problem("Your affiliate access is suspended.", 403)
+        code = customer.get("affiliate_code")
+        if not code or not re.fullmatch(r"[A-Za-z0-9_-]{1,16}", str(code)):
+            raise Problem("Create your referral code before generating a banner.")
+        tier = next((t for t in self.tiers().values() if str(t["id"]) == str(customer.get("affiliate_tier_id"))), None)
+        if tier is None:
+            raise Problem("Your affiliate tier needs configuration.", 503)
+        return affiliate_gif(code, int(money(tier["discount_percentage"])))
+
     def set_code(self, session, code):
         code = str(code).strip()
         if not CODE.fullmatch(code):
@@ -368,6 +383,17 @@ def handler_for(app):
                     session = self.session()
                     app.limit("dashboard:" + str(session["id"]), 12, 60)
                     return self.respond(200, app.dashboard(session))
+                if path == "/api/affiliates/banner.gif":
+                    raw = app.banner(self.session())
+                    self.send_response(200)
+                    self.send_header("Content-Type", "image/gif")
+                    self.send_header("Content-Disposition", 'attachment; filename="Quilted-Tweaks-Referral.gif"')
+                    self.send_header("Cache-Control", "no-store")
+                    self.send_header("X-Content-Type-Options", "nosniff")
+                    self.send_header("Content-Length", str(len(raw)))
+                    self.end_headers()
+                    self.wfile.write(raw)
+                    return
                 self.respond(404, {"message": "Not found."})
             except Problem as e:
                 self.respond(e.status, {"message": str(e)})
