@@ -200,3 +200,11 @@ Sign-in emails now include an inline-styled dark green/mint HTML layout plus the
 Dashboard polish includes a sliding tab indicator, short panel/form transitions, button press feedback, hover effects, loading states, and focus rings. CSS motion respects prefers-reduced-motion. Animated GIF playback is part of the explicitly opened Banner Generator preview.
 
 Validation includes referral propagation tests, authenticated GIF access and headers, matching HTML/plain-text email codes, GIF format/frame count/dimensions/loop metadata and frame changes, plus browser preview, GIF download and settings navigation checks against isolated synthetic account data. No live customer, email or order was changed during development.
+
+## Banner Generator onboarding fix and Free Utility preview
+
+The Banner Generator now handles accounts without a referral code directly on the banner page. Choose a code and press **Create code & generate GIF**; the server saves it in SellAuth, assigns Bronze for new affiliates, and generates the animated GIF using the confirmed native code. Existing affiliates generate their preview when opening the tab. Generation shows a loading state, returns a visible error when it fails, times out rather than hanging indefinitely, and offers **Retry banner generation**. Changing a code clears the old preview and download. The disabled-button dead end with an unchanged placeholder is removed.
+
+The Free Utility screenshot is replaced with the supplied Quilted Tweaks dashboard image, without changing the Premium Utility screenshots or download links.
+
+Replace the full package contents in the website repository and redeploy. Keep the existing Railway variables and persistent /data volume. No new variables are required. After deployment, sign in with a new affiliate account, open Banner Generator, create a code there, and confirm the animated GIF previews and downloads. SellAuth must still allow open enrollment and code editing, as described above; upstream errors are shown instead of silently ignored.
